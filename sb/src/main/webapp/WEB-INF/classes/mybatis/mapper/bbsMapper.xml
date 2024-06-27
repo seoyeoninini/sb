@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sp.app.mapper.BoardMapper">
+
+	<!-- null을 허용한 경우 jdbcType을 명시해야 함 -->
+	<insert id="insertBoard" parameterType="com.sp.app.domain.Board">
+		INSERT INTO bbs(num, userId, subject, content, hitCount, reg_date, saveFilename, originalFilename)
+		VALUES (bbs_seq.NEXTVAL, #{userId}, #{subject}, #{content}, 0, SYSDATE,
+		#{saveFilename, jdbcType=VARCHAR},
+		#{originalFilename, jdbcType=VARCHAR})
+	</insert>
+	
+	<sql id="where-list">
+		<choose>
+			<when test="schType=='all' ">
+				( INSTR(subject, #{kwd}) &gt; 0
+					OR DBMS_LOB.INSTR(content, #{kwd})  &gt; 0 )
+			</when>
+			<when test="schType == 'reg_date' " >
+				( TO_CHAR(reg_date, 'YYYYMMDD') = #{kwd}
+				  OR TO_CHAR(reg_date, 'YYYY-MM-DD') = #{kwd} )
+			</when>
+			<when test="schType == 'content' ">
+				DBMS_LOB.INSTR(content, #{kwd}) &gt; 0
+			</when>
+			<otherwise>
+				INSTR(${schType}, #{kwd}) &gt; 0
+			</otherwise>
+		</choose>
+	</sql>
+	
+	<!-- 글개수 -->
+	<select id="dataCount" parameterType="map" resultType="Integer">
+		SELECT NVL(COUNT(*), 0)
+		FROM bbs b
+		JOIN member1 m ON b.userId = m.userId
+		<where>
+			<if test="kwd != null and kwd != '' ">
+				<include refid="where-list"/>
+			</if>
+		</where>
+	</select>
+	
+	<!-- 글리스트 -->
+	<select id="listBoard" parameterType="map" resultType="com.sp.app.domain.Board">
+		SELECT b.num, b.userId, userName, subject, 
+			TO_CHAR(b.reg_date, 'YYYY-MM-DD') reg_date,
+			hitCount, saveFilename
+		FROM bbs b
+		JOIN member1 m ON b.userId = m.userId
+		<where>
+			<if test="kwd != null and kwd != '' ">
+				<include refid="where-list"/>
+			</if>
+		</where>
+		ORDER BY num DESC
+		OFFSET #{offset} ROWS FETCH FIRST #{size} ROWS ONLY
+	</select>
+	
+	<!-- 글보기 -->
+	<select id="findById" parameterType="Long"
+		resultType="com.sp.app.domain.Board">
+		SELECT b.num, b.userId, userName, subject, content, hitCount,
+			b.reg_date, saveFilename, originalFilename
+		FROM bbs b
+		JOIN member1 m ON b.userId = m.userId
+		WHERE b.num = #{num}	
+		</select>
+		
+		<!-- 조회수 -->
+		<update id="updateHitCount" parameterType="Long">
+			UPDATE bbs SET hitCount = hitCount + 1
+			WHERE num = #{num}
+		</update>
+		
+		<!-- 이전글 -->
+		<select id="findByPrev" parameterType="map"
+			resultType="com.sp.app.domain.Board">
+			SELECT num, subject
+			FROM bbs b
+			JOIN member1 m ON b.num = m.num
+			<where>
+				<if test="kwd != null and kwd != '' ">
+					<include refid="where-list"/>
+				</if>
+				AND ( num &gt; #{num} )
+			</where>
+			ORDER BY num ASC
+			FETCH FIRST 1 ROWS ONLY
+		</select>
+		
+		<!-- 다음글 -->
+		<select id="findByNext" parameterType="map"
+			resultType="com.sp.app.domain.Board">
+			SELECT num, subject
+			FROM bbs b
+			JOIN member1 m ON b.num = m.num
+			<where>
+				<if test="kwd != null and kwd != '' ">
+					<include refid="where-list"/>
+				</if>
+				AND ( num &lt; #{num} )
+			</where>
+			ORDER BY num DESC
+			FETCH FIRST 1 ROWS ONLY
+		</select>
+		
+		
+</mapper>
