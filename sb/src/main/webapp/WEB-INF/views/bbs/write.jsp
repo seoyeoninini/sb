@@ -46,21 +46,21 @@ function sendOk() {
 					<tr>
 						<td class="bg-light col-sm-2" scope="row">제 목</td>
 						<td>
-							<input type="text" name="subject" class="form-control" value="">
+							<input type="text" name="subject" class="form-control" value="${dto.subject}">
 						</td>
 					</tr>
         
 					<tr>
 						<td class="bg-light col-sm-2" scope="row">작성자명</td>
  						<td>
-							<p class="form-control-plaintext">스프링</p>
+							<p class="form-control-plaintext">${sessionScope.member.userName}</p>
 						</td>
 					</tr>
 
 					<tr>
 						<td class="bg-light col-sm-2" scope="row">내 용</td>
 						<td>
-							<textarea name="content" class="form-control"></textarea>
+							<textarea name="content" class="form-control">${dto.content}</textarea>
 						</td>
 					</tr>
 					
@@ -71,19 +71,52 @@ function sendOk() {
 						</td>
 					</tr>
 					
+					<c:if test="${mode == 'update'}">
+						<tr>
+							<td class="bg-light col-sm-2" scope="row">첨부된파일</td>
+							<td>
+								<p class="form-control-plaintext">
+									<c:if test="${not empty dto.saveFilename}">
+										<a href="javascript:deleteFile('${dto.num}');">
+										<i class="bi bi-trash"></i></a>
+										${dto.originalFilename}
+									</c:if>
+									&nbsp;
+								</p>
+							</td>
+						</tr>
+					</c:if>
+					
 				</table>
 				
 				<table class="table table-borderless">
  					<tr>
 						<td class="text-center">
-							<button type="button" class="btn btn-dark" onclick="sendOk();">등록하기 <i class="bi bi-check2"></i></button>
+							<button type="button" class="btn btn-dark" onclick="sendOk();">${mode == "update" ? "수정완료" : "등록완료"} <i class="bi bi-check2"></i></button>
 							<button type="reset" class="btn btn-light">다시입력</button>
-							<button type="button" class="btn btn-light" onclick="location.href='${pageContext.request.contextPath}/bbs/list';">등록취소 <i class="bi bi-x"></i></button>
+							<button type="button" class="btn btn-light" onclick="location.href='${pageContext.request.contextPath}/bbs/list';">${mode == "update" ? "수정취소" : "등록취소"} <i class="bi bi-x"></i></button>
+							<c:if test="${mode=='update'}">
+                                <input type="hidden" name="num" value="${dto.num}">
+                                <input type="hidden" name="page" value="${page}">
+                                <input type="hidden" name="saveFilename" value="${dto.saveFilename}">
+                                <input type="hidden" name="originalFilename" value="${dto.originalFilename}">
+							</c:if>
 						</td>
 					</tr>
 				</table>
 			</form>
-		
 		</div>
 	</div>
 </div>
+
+<c:if test="${mode=='update'}">
+    <script type="text/javascript">
+        function deleteFile(num) {
+            if( ! confirm("파일을 삭제하시겠습니까 ?") ) {
+                return;
+            }
+            let url = "${pageContext.request.contextPath}/bbs/deleteFile?num=" + num + "&page=${page}";
+            location.href = url;
+        }
+    </script>
+</c:if>

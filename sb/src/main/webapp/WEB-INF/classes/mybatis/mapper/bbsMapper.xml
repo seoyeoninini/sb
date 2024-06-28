@@ -62,9 +62,15 @@
 	<select id="findById" parameterType="Long"
 		resultType="com.sp.app.domain.Board">
 		SELECT b.num, b.userId, userName, subject, content, hitCount,
-			b.reg_date, saveFilename, originalFilename
+			b.reg_date, saveFilename, originalFilename, 
+			NVL(boardLikeCount, 0) boardLikeCount
 		FROM bbs b
 		JOIN member1 m ON b.userId = m.userId
+		LEFT OUTER JOIN (
+			SELECT num, COUNT(*) boardLikeCount
+			FROM bbsLike
+			GROUP BY num
+		) bc ON b.num = bc.num
 		WHERE b.num = #{num}	
 		</select>
 		
@@ -79,7 +85,7 @@
 			resultType="com.sp.app.domain.Board">
 			SELECT num, subject
 			FROM bbs b
-			JOIN member1 m ON b.num = m.num
+			JOIN member1 m ON b.userId = m.userId
 			<where>
 				<if test="kwd != null and kwd != '' ">
 					<include refid="where-list"/>
@@ -95,7 +101,7 @@
 			resultType="com.sp.app.domain.Board">
 			SELECT num, subject
 			FROM bbs b
-			JOIN member1 m ON b.num = m.num
+			JOIN member1 m ON b.userId = m.userId
 			<where>
 				<if test="kwd != null and kwd != '' ">
 					<include refid="where-list"/>
@@ -106,5 +112,41 @@
 			FETCH FIRST 1 ROWS ONLY
 		</select>
 		
+		<!-- 글 수정 -->
+		<update id="updateBoard" parameterType="com.sp.app.domain.Board">
+			UPDATE bbs SET subject = #{subject}, content = #{content},
+				saveFilename = #{saveFilename, jdbcType=VARCHAR},
+				originalFilename = #{originalFilename, jdbcType=VARCHAR}
+			WHERE num = #{num}
+		</update>
 		
+		<!-- 글 삭제 -->
+		<delete id="deleteBoard" parameterType="Long">
+			DELETE FROM bbs WHERE num = #{num}
+		</delete>
+		
+		<!-- 게시글 공감 -->
+		<insert id="insertBoardLike" parameterType="map">
+			INSERT INTO bbsLike(num, userId) VALUES (#{num}, #{userId})
+		</insert>
+		
+		<!-- 게시글 공감 삭제 -->
+		<delete id="deleteBoardLike" parameterType="map">
+			DELETE FROM bbslike
+			WHERE num = #{num} AND userId = #{userId}
+		</delete>
+		
+		<!-- 게시글 공감 개수 -->
+		<select id="boardLikeCount" parameterType="Long" resultType="Integer">
+			SELECT COUNT(*)
+			FROM bbsLike
+			WHERE num = #{num}
+		</select>
+		
+		<!-- 유저의 게시글 공감 여부 -->
+		<select id="userBoardLike" parameterType="map" resultType="com.sp.app.domain.Board">
+			 SELECT num, userId
+			 FROM bbsLike
+			 WHERE num = #{num} AND userId = #{userId}
+		 </select>
 </mapper>

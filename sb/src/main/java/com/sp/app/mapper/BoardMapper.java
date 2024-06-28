@@ -22,4 +22,10 @@ public interface BoardMapper {
 	public Board findByPrev(Map<String, Object> map);
 	public Board findByNext(Map<String, Object> map);
 	
+	public void insertBoardLike(Map<String, Object> map) throws SQLException;
+	public void deleteBoardLike(Map<String, Object> map) throws SQLException;
+	
+	public int boardLikeCount(long num);
+	public Board userBoardLike(Map<String, Object> map);
+	
 }

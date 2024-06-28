@@ -9,9 +9,18 @@
 </style>
 <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/boot-board.css" type="text/css">
 
+<c:if test="${sessionScope.member.membership > 50 || dto.userId == sessionScope.member.userId}">
 <script type="text/javascript">
 
+function deleteBoard() {
+	if(confirm("게시글을 삭제하시겠습니까 ? ")) {
+		let url = "${pageContext.request.contextPath}/bbs/delete";
+		let query = "num=${dto.num}&${query}";
+		location.href = url + "?" + query;
+	}
+}
 </script>
+</c:if>
 
 <div class="container">
 	<div class="body-container">	
@@ -25,7 +34,7 @@
 				<thead>
 					<tr>
 						<td colspan="2" align="center">
-							제목 입니다.
+							${dto.subject}
 						</td>
 					</tr>
 				</thead>
@@ -33,36 +42,52 @@
 				<tbody>
 					<tr>
 						<td width="50%">
-							이름 : 홍길동
+							이름 : ${dto.userName}
 						</td>
 						<td align="right">
-							2022-05-01 | 조회 1
+							${dto.reg_date} | 조회 ${dto.hitCount}
 						</td>
 					</tr>
 					
 					<tr>
 						<td colspan="2" valign="top" height="200" style="border-bottom: none;">
-							내용 입니다.
+							${dto.content}
+						</td>
+					</tr>
+					
+					<tr>
+						<td colspan="2" class="text-center p-3" style="border-bottom: none;">
+							<button type="button" class="btn btn-outline-secondary btnSendBoardLike" title="좋아요">
+								<i class="bi ${userBoardLiked ? 'bi-hand-thumbs-up-fill' :'bi-hand-thumbs-up'}"></i>&nbsp;&nbsp;<span id="boardLikeCount">${dto.boardLikeCount}</span>
+							</button>
 						</td>
 					</tr>
 					
 					<tr>
 						<td colspan="2">
+							<c:if test="${not empty dto.saveFilename}">
 								<p class="border text-secondary my-1 p-2">
 									<i class="bi bi-folder2-open"></i>
-
+									<a href="${pageContext.request.contextPath}/bbs/download?num=${dto.num}">${dto.originalFilename}</a>
 								</p>
+							</c:if>
 						</td>
 					</tr>
 
 					<tr>
 						<td colspan="2">
-							이전글 :
+							이전글 : 
+							<c:if test="${not empty prevDto}">
+								<a href="${pageContext.request.contextPath}/bbs/article?${query}&num=${prevDto.num}">${prevDto.subject}</a>
+							</c:if>
 						</td>
 					</tr>
 					<tr>
 						<td colspan="2">
 							다음글 :
+							<c:if test="${not empty nextDto}">
+								<a href="${pageContext.request.contextPath}/bbs/article?${query}&num=${nextDto.num}">${nextDto.subject}</a>
+							</c:if>
 						</td>
 					</tr>
 
@@ -72,11 +97,29 @@
 			<table class="table table-borderless">
 				<tr>
 					<td width="50%">
-								<button type="button" class="btn btn-light">수정</button>
-				    			<button type="button" class="btn btn-light">삭제</button>
+						<c:choose>
+							<c:when test="${sessionScope.member.userId==dto.userId}">
+								<button type="button" class="btn btn-light" onclick="location.href='${pageContext.request.contextPath}/bbs/update?num=${dto.num}&page=${page}';">수정</button>
+							</c:when>
+							<c:otherwise>
+								<button type="button" class="btn btn-light" disabled>수정</button>
+							</c:otherwise>
+						</c:choose>
+						
+						<c:choose>
+							<c:when test="${sessionScope.member.userId==dto.userId || sessionScope.member.membership > 50 }">
+								<button type="button" class="btn btn-light" onclick="deleteBoard();">삭제</button>
+							</c:when>
+							<c:otherwise>
+								<button type="button" class="btn btn-light" disabled>삭제</button>
+							</c:otherwise>
+						</c:choose>
+					
+								
+				    			
 					</td>
 					<td class="text-end">
-						<button type="button" class="btn btn-light" onclick="location.href='${pageContext.request.contextPath}/';">리스트</button>
+						<button type="button" class="btn btn-light" onclick="location.href='${pageContext.request.contextPath}/bbs/list?${query}';">리스트</button>
 					</td>
 				</tr>
 			</table>
@@ -84,3 +127,85 @@
 		</div>
 	</div>
 </div>
+
+<script type="text/javascript">
+function login() {
+	location.href = '${pageContext.request.contextPath}/member/login';
+}
+
+function ajaxFun(url, method, formData, dataType, fn, file = false) {
+	const settings = {
+			type: method, 
+			data: formData,
+			dataType:dataType,
+			success:function(data) {
+				fn(data);
+			},
+			beforeSend: function(jqXHR) {
+				jqXHR.setRequestHeader('AJAX', true);
+			},
+			complete: function () {
+			},
+			error: function(jqXHR) {
+				if(jqXHR.status === 403) {
+					login();
+					return false;
+				} else if(jqXHR.status === 400) {
+					alert('요청 처리가 실패 했습니다.');
+					return false;
+		    	}
+		    	
+				console.log(jqXHR.responseText);
+			}
+	};
+	
+	if(file) {
+		settings.processData = false;  // file 전송시 필수. 서버로전송할 데이터를 쿼리문자열로 변환여부
+		settings.contentType = false;  // file 전송시 필수. 서버에전송할 데이터의 Content-Type. 기본:application/x-www-urlencoded
+	}
+	
+	$.ajax(url, settings);
+}
+
+// 게시글 공감
+$(function() {
+	$(".btnSendBoardLike").click(function() {
+		const $i = $(this).find("i");
+		let userLiked = $i.hasClass("bi-hand-thumbs-up-fill");
+		let msg = userLiked ? "게시글 공감을 취소할래?" : "게시글에 공감할래?";
+		
+		if(! confirm(msg)) {
+			return false;
+		}
+		
+		let url = "${pageContext.request.contextPath}/bbs/insertBoardLike";
+		let num = "${dto.num}";
+		let query = "num=" + num + "&userLiked=" + userLiked;
+		
+		const fn = function(data) {
+			let state = data.state;
+			if(state === "true") {
+				if(userLiked) {
+					$i.removeClass("bi-hand-thumbs-up-fill")
+						.addClass("bi-hand-thumbs-up")
+				} else {
+					$i.removeClass("bi-hand-thumbs-up")
+						.addClass("bi-hand-thumbs-up-fill")
+				}
+				
+				let count = data.boardLikeCount;
+				$("#boardLikeCount").text(count);
+				
+			} else if(state === "liked") {
+				alert("게시글 공감은 한번만 가능합니다.");
+			} else {
+				alert("게시글 공감 처리가 실패했습니다.");
+			}
+		};
+		
+		ajaxFun(url, "post", query, "json", fn);
+		
+	});
+});
+
+</script>
