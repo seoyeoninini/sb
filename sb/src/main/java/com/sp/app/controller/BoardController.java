@@ -157,7 +157,7 @@ public class BoardController {
 		}
 		
 		dto.setUserName(myUtil.nameMasking(dto.getUserName()));
-		dto.setContent(myUtil.htmlSymbols(dto.getContent()));
+		// dto.setContent(myUtil.htmlSymbols(dto.getContent())); // 스마트에디터 사용하므로 
 		
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("schType", schType);

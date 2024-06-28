@@ -9,17 +9,16 @@
 </style>
 <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/boot-board.css" type="text/css">
 
-<c:if test="${sessionScope.member.membership > 50 || dto.userId == sessionScope.member.userId}">
-<script type="text/javascript">
-
-function deleteBoard() {
-	if(confirm("게시글을 삭제하시겠습니까 ? ")) {
-		let url = "${pageContext.request.contextPath}/bbs/delete";
-		let query = "num=${dto.num}&${query}";
-		location.href = url + "?" + query;
+<c:if test="${sessionScope.member.membership>50 || dto.userId == sessionScope.member.userId}">
+	<script type="text/javascript">
+	function deleteBoard() {
+		if(confirm("게시글을 삭제하시겠습니까 ? ")) {
+			let url = "${pageContext.request.contextPath}/bbs/delete";
+			let query = "num=${dto.num}&${query}";
+			location.href = url + "?" + query;
+		}
 	}
-}
-</script>
+	</script>
 </c:if>
 
 <div class="container">
@@ -58,7 +57,7 @@ function deleteBoard() {
 					<tr>
 						<td colspan="2" class="text-center p-3" style="border-bottom: none;">
 							<button type="button" class="btn btn-outline-secondary btnSendBoardLike" title="좋아요">
-								<i class="bi ${userBoardLiked ? 'bi-hand-thumbs-up-fill' :'bi-hand-thumbs-up'}"></i>&nbsp;&nbsp;<span id="boardLikeCount">${dto.boardLikeCount}</span>
+								<i class="bi ${userBoardLiked ? 'bi-hand-thumbs-up-fill':'bi-hand-thumbs-up'}"></i>&nbsp;&nbsp;<span id="boardLikeCount">${dto.boardLikeCount}</span>
 							</button>
 						</td>
 					</tr>
@@ -76,7 +75,7 @@ function deleteBoard() {
 
 					<tr>
 						<td colspan="2">
-							이전글 : 
+							이전글 :
 							<c:if test="${not empty prevDto}">
 								<a href="${pageContext.request.contextPath}/bbs/article?${query}&num=${prevDto.num}">${prevDto.subject}</a>
 							</c:if>
@@ -107,15 +106,13 @@ function deleteBoard() {
 						</c:choose>
 						
 						<c:choose>
-							<c:when test="${sessionScope.member.userId==dto.userId || sessionScope.member.membership > 50 }">
+							<c:when test="${sessionScope.member.userId==dto.userId || sessionScope.member.membership>50}">
 								<button type="button" class="btn btn-light" onclick="deleteBoard();">삭제</button>
 							</c:when>
 							<c:otherwise>
 								<button type="button" class="btn btn-light" disabled>삭제</button>
 							</c:otherwise>
 						</c:choose>
-					
-								
 				    			
 					</td>
 					<td class="text-end">
@@ -123,6 +120,29 @@ function deleteBoard() {
 					</td>
 				</tr>
 			</table>
+			
+			<div class="reply">
+				<form name="replyForm" method="post">
+					<div class='form-header'>
+						<span class="bold">댓글</span><span> - 타인을 비방하거나 개인정보를 유출하는 글의 게시를 삼가해 주세요.</span>
+					</div>
+					
+					<table class="table table-borderless reply-form">
+						<tr>
+							<td>
+								<textarea class='form-control' name="content"></textarea>
+							</td>
+						</tr>
+						<tr>
+						   <td align='right'>
+						        <button type='button' class='btn btn-light btnSendReply'>댓글 등록</button>
+						    </td>
+						 </tr>
+					</table>
+				</form>
+				
+				<div id="listReply"></div>
+			</div>
 			
 		</div>
 	</div>
@@ -168,11 +188,11 @@ function ajaxFun(url, method, formData, dataType, fn, file = false) {
 }
 
 // 게시글 공감
-$(function() {
-	$(".btnSendBoardLike").click(function() {
+$(function(){
+	$(".btnSendBoardLike").click(function(){
 		const $i = $(this).find("i");
 		let userLiked = $i.hasClass("bi-hand-thumbs-up-fill");
-		let msg = userLiked ? "게시글 공감을 취소할래?" : "게시글에 공감할래?";
+		let msg = userLiked ? "게시글 공감을 취소하시겠습니까 ? " : "게시글에 동감하시겠습니까 ?";
 		
 		if(! confirm(msg)) {
 			return false;
@@ -190,12 +210,11 @@ $(function() {
 						.addClass("bi-hand-thumbs-up")
 				} else {
 					$i.removeClass("bi-hand-thumbs-up")
-						.addClass("bi-hand-thumbs-up-fill")
+					.addClass("bi-hand-thumbs-up-fill")
 				}
 				
 				let count = data.boardLikeCount;
 				$("#boardLikeCount").text(count);
-				
 			} else if(state === "liked") {
 				alert("게시글 공감은 한번만 가능합니다.");
 			} else {
@@ -209,3 +228,4 @@ $(function() {
 });
 
 </script>
+

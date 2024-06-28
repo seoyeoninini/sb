@@ -19,7 +19,7 @@ function sendOk() {
 		return;
 	}
 
-	f.action = "${pageContext.request.contextPath}/";
+	f.action = "${pageContext.request.contextPath}/member/pwd";
 	f.submit();
 }
 </script>

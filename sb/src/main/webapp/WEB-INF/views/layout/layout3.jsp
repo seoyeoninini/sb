@@ -112,7 +112,7 @@
                     <div>
                         <p class="form-control-plaintext mb-0">
                         	아직 회원이 아니세요 ?
-                        	<a href="${pageContext.request.contextPath}/" class="text-decoration-none">회원가입</a>
+                        	<a href="${pageContext.request.contextPath}/member/member" class="text-decoration-none">회원가입</a>
                         </p>
                     </div>
                 </div>

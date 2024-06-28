@@ -3,17 +3,17 @@ package com.sp.app.domain;
 import org.springframework.web.multipart.MultipartFile;
 
 public class Board {
-	private long num;
-	private String userId;
-	private String userName;
-	private String subject;
-	private String content;
-	private String reg_date;
-	private int hitCount;
+    private long num;
+    private String userId;
+    private String userName;
+    private String subject;
+    private String content;
+    private String reg_date;
+    private int hitCount;
 	
 	private String saveFilename;
 	private String originalFilename;
-	private MultipartFile selectFile; // <input type="file" name="selectFile"...>
+	private MultipartFile selectFile; // <input type='file' name='selectFile' ..
 	
 	private int replyCount;
 	private int boardLikeCount;
@@ -90,7 +90,4 @@ public class Board {
 	public void setBoardLikeCount(int boardLikeCount) {
 		this.boardLikeCount = boardLikeCount;
 	}
-	
-	
-	
 }

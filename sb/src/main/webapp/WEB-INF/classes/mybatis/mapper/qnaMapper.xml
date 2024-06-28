@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.sp.app.mapper.QnaMapper">
+	<insert id="insertQuestion" parameterType="com.sp.app.domain.Qna">
+		INSERT INTO qna(num, lectureSubCode, secret,  
+			title, content, userId, reg_date)
+		VALUES (qna_seq.NEXTVAL, #{lectureSubCode}, #{secret},
+			#{title}, #{content}, #{userId}, SYSDATE) 
+	</insert>
+
+	<sql id="where-list">
+		<if test="schType=='all' ">
+			( INSTR(q.title, #{kwd}) &gt; 0
+				OR INSTR(q.content, #{kwd}) &gt; 0
+				OR INSTR(s.subject, #{kwd}) &gt; 0 )
+		</if>
+		<if test="schType=='subject' ">
+			INSTR(s.subject, #{kwd}) &gt; 0
+		</if>
+		<if test="schType=='title' ">
+			INSTR(q.title, #{kwd}) &gt; 0
+		</if>
+		<if test="schType=='content' ">
+			INSTR(q.content, #{kwd}) &gt; 0
+		</if>
+		<if test="schType=='userName' ">
+			userName=#{kwd}
+		</if>
+		<if test="schType=='reg_date' ">
+			( TO_CHAR(q.reg_date, 'YYYY-MM-DD') = #{kwd}
+				OR TO_CHAR(q.reg_date, 'YYYYMMDD') = #{kwd} )
+	   </if>
+	</sql>
+	
+	<select id="dataCount" parameterType="map" resultType="Integer">
+		SELECT NVL(COUNT(*), 0) 
+		FROM qna q
+		JOIN lectureSubCategory s ON q.lectureSubCode=s.lectureSubCode
+		JOIN member1 m ON q.userId=m.userId
+		<where>
+			<if test="kwd != null and kwd != '' ">
+				<include refid="where-list"/>
+			</if>
+		</where>
+	</select>
+	
+	<select id="listQuestion" parameterType="map" resultType="com.sp.app.domain.Qna">
+		SELECT q.num, userName, q.userId, q.title, q.secret, 
+			   q.answerId, TO_CHAR(q.reg_date, 'YYYY-MM-DD') reg_date,
+			   q.lectureSubCode, s.subject
+		FROM qna q
+		JOIN lectureSubCategory s ON q.lectureSubCode=s.lectureSubCode
+		JOIN member1 m         ON q.userId=m.userId
+		<where>
+			<if test="kwd != null and kwd != ''">
+				<include refid="where-list"/>
+			</if>
+		</where>
+		ORDER BY q.num DESC
+		OFFSET #{offset} ROWS FETCH FIRST #{size} ROWS ONLY
+	</select>
+	
+	<select id="findById" parameterType="Long" resultType="com.sp.app.domain.Qna">
+		SELECT q.num, q.userId, m.userName, q.title, q.content, q.reg_date, q.secret, 
+		       q.answer, q.answerId, m2.userName answerName, answer_date,
+			   q.lectureSubCode, s.subject, l.lectureCode, l.category
+		FROM qna q
+		JOIN lectureSubCategory s ON q.lectureSubCode = s.lectureSubCode
+		JOIN lectureCategory l ON s.lectureCode = l.lectureCode
+		JOIN member1 m      ON q.userId = m.userId
+		LEFT OUTER JOIN member1 m2 ON q.answerId = m2.userId
+		WHERE q.num = #{num}                  
+	</select>
+
+	<select id="findByPrev" parameterType="map" resultType="com.sp.app.domain.Qna">
+		SELECT q.num, q.title, q.secret, q.userId
+		FROM qna q
+		JOIN member1 m ON q.userId=m.userId
+		JOIN lectureSubCategory s ON q.lectureSubCode=s.lectureSubCode		
+		<where>
+			<if test="kwd != null and kwd != '' ">
+				<include refid="where-list"/>
+			</if>
+			AND (q.num &gt; #{num})
+		</where>
+		ORDER BY num ASC
+		FETCH FIRST 1 ROWS ONLY
+	</select>
+	
+	<select id="findByNext" parameterType="map" resultType="com.sp.app.domain.Qna">
+		SELECT q.num, q.title, q.secret, q.userId
+		FROM qna q
+		JOIN member1 m ON q.userId=m.userId
+		JOIN lectureSubCategory s ON q.lectureSubCode=s.lectureSubCode		
+		<where>
+			<if test="kwd != null and kwd != '' ">
+				<include refid="where-list"/>
+			</if>
+			AND (q.num &lt; #{num})
+		</where>
+		ORDER BY num DESC
+		FETCH FIRST 1 ROWS ONLY
+	</select>
+	
+	<update id="updateQuestion" parameterType="com.sp.app.domain.Qna">
+		UPDATE qna SET title=#{title}, content=#{content},
+			lectureSubCode=#{lectureSubCode}, secret=#{secret}
+		WHERE num = #{num} AND userId = #{userId}
+	</update>
+
+	<update id="updateAnswer" parameterType="com.sp.app.domain.Qna">
+		UPDATE qna SET answer=#{answer, jdbcType=VARCHAR}, answerId=#{answerId, jdbcType=VARCHAR},
+			<choose>
+				<when test="answer !=null and answer != '' ">answer_date=SYSDATE</when>
+				<otherwise>answer_date=NULL</otherwise>
+			</choose>
+		WHERE num = #{num}
+	</update>
+	
+	<delete id="deleteQuestion" parameterType="Long">
+		DELETE FROM qna WHERE num = #{num}
+	</delete>
+</mapper>

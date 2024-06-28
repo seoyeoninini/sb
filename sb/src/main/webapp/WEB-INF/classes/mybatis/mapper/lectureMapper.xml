@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sp.app.mapper.LectureMapper">
+	<insert id="insertCategory" parameterType="com.sp.app.domain.Lecture">
+		INSERT INTO lectureCategory(lectureCode, category) VALUES (#{lectureCode}, #{category})
+	</insert>
+	<update id="updateCategory" parameterType="com.sp.app.domain.Lecture">
+		UPDATE lectureCategory SET category = #{category}
+		WHERE lectureCode=#{lectureCode}
+	</update>
+	<delete id="deleteCategory" parameterType="String">
+		DELETE FROM lectureCategory
+		WHERE lectureCode=#{lectureCode}
+	</delete>
+
+	<select id="listCategory" resultType="com.sp.app.domain.Lecture">
+		SELECT lectureCode, category FROM lectureCategory
+		ORDER BY lectureCode
+	</select>
+	<select id="findByCategoryId" resultType="com.sp.app.domain.Lecture" parameterType="String">
+		SELECT lectureCode, category FROM lectureCategory
+		WHERE lectureCode=#{lectureCode}
+	</select>
+
+	<insert id="insertSubject" parameterType="com.sp.app.domain.Lecture">
+		INSERT INTO lectureSubCategory(lectureSubCode, lectureCode, subject) 
+		VALUES (#{lectureSubCode}, #{lectureCode}, #{subject})
+	</insert>
+	<update id="updateSubject" parameterType="com.sp.app.domain.Lecture">
+		UPDATE lectureSubCategory SET subject = #{subject}
+		WHERE lectureSubCode=#{lectureSubCode}
+	</update>
+	<delete id="deleteSubject" parameterType="String">
+		DELETE FROM lectureSubCategory
+		WHERE lectureSubCode=#{lectureSubCode}
+	</delete>
+
+	<select id="listSubject" resultType="com.sp.app.domain.Lecture" parameterType="String">
+		SELECT lectureSubCode, lectureCode, subject FROM lectureSubCategory
+		WHERE lectureCode=#{lectureCode}
+		ORDER BY lectureSubCode
+	</select>
+	<select id="findBySubjectId" resultType="com.sp.app.domain.Lecture" parameterType="String">
+		SELECT lectureSubCode, lectureCode, subject FROM lectureSubCategory
+		WHERE lectureSubCode=#{lectureSubCode}
+	</select>
+
+	<select id="lectureSeq" resultType="Long">
+		SELECT lecture_seq.NEXTVAL FROM dual
+	</select>
+	
+	<!-- NULL을 추가하는 경우 jdbcType을 명시해야 하지만 ""는 명시하지 않아도 됨 -->
+	<insert id="insertLecture" parameterType="com.sp.app.domain.Lecture">
+		INSERT INTO lecture(num, userId, lectureSubCode, title, content, youtube, hitCount, reg_date)
+		VALUES(#{num}, #{userId}, #{lectureSubCode}, #{title}, #{content}, #{youtube}, 0, SYSDATE)
+	</insert>
+
+	<sql id="where-list">
+		<if test="schType=='all' ">
+			( INSTR(title, #{kwd}) &gt; 0
+				OR DBMS_LOB.INSTR(content, #{kwd}) &gt; 0 )
+		</if>
+		<if test="schType=='title' ">
+			INSTR(title, #{kwd}) &gt; 0
+		</if>
+		<if test="schType=='content' ">
+			DBMS_LOB.INSTR(content, #{kwd}) &gt; 0 
+		</if>
+		<if test="schType=='userName' ">
+			userName=#{kwd}
+		</if>
+		<if test="schType=='reg_date' ">
+			( TO_CHAR(reg_date, 'YYYY-MM-DD') = #{kwd}
+				OR TO_CHAR(reg_date, 'YYYYMMDD') = #{kwd} )
+		</if>
+	</sql>
+	
+	<!-- 데이터 개수  -->
+	<select id="dataCount" parameterType="map" resultType="Integer">
+		SELECT NVL(COUNT(*), 0)
+		FROM lecture l
+		JOIN member1 m ON l.userId=m.userId
+		<where>
+			lectureSubCode = #{lectureSubCode}
+			<if test="kwd != null and kwd!=''  ">
+				AND <include refid="where-list"/>
+			</if>
+		</where>
+	</select>
+	
+	<!-- 리스트 -->
+	<select id="listLecture" parameterType="map" resultType="com.sp.app.domain.Lecture">
+		SELECT l.num, l.userId, userName, title, hitCount, TO_CHAR(reg_date, 'YYYY-MM-DD') reg_date
+		FROM lecture l
+		JOIN member1 m ON l.userId=m.userId
+		<where>
+			lectureSubCode = #{lectureSubCode}
+			<if test="kwd != null and kwd != ''">
+				AND <include refid="where-list"/>
+			</if>
+		</where>
+		ORDER BY num DESC
+		OFFSET #{offset} ROWS FETCH FIRST #{size} ROWS ONLY
+	</select>
+
+    <!-- 글보기 -->
+    <select id="findById" parameterType="Long" resultType="com.sp.app.domain.Lecture">
+		SELECT num, l.userId, userName, title, content, youtube, reg_date, hitCount, s.lectureCode, l.lectureSubCode, subject
+		FROM lecture l
+		JOIN lectureSubCategory s ON l.lectureSubCode=s.lectureSubCode 
+		JOIN member1 m ON l.userId=m.userId 
+		WHERE num = #{num}
+	</select>
+
+	<!-- 조회수 증가 -->
+	<update id="updateHitCount" parameterType="Long">
+		UPDATE lecture SET hitCount=hitCount+1 WHERE num = #{num}
+	</update>
+
+	<!-- 이전글 -->
+	<select id="findByPrev" parameterType="map" resultType="com.sp.app.domain.Lecture">
+		SELECT num, title
+		FROM lecture l
+		JOIN member1 m ON l.userId=m.userId
+		<where>
+			lectureSubCode = #{lectureSubCode}
+			<if test="kwd != null and kwd != '' ">
+				AND <include refid="where-list"/>
+			</if>
+			AND (num &gt; #{num})
+		</where>
+		ORDER BY num ASC
+		FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 다음글 -->
+    <select id="findByNext" parameterType="map" resultType="com.sp.app.domain.Lecture">
+		SELECT num, title
+		FROM lecture l
+		JOIN member1 m ON l.userId=m.userId
+		<where>
+			lectureSubCode = #{lectureSubCode}
+			<if test="kwd != null and kwd != '' ">
+				AND <include refid="where-list"/>
+			</if>
+			AND (num &lt; #{num})
+		</where>
+		ORDER BY num DESC
+		FETCH FIRST 1 ROWS ONLY
+    </select>
+    
+	<!-- 수정 -->
+	<update id="updateLecture" parameterType="com.sp.app.domain.Lecture">
+		UPDATE lecture SET title=#{title}, content=#{content}, youtube=#{youtube}
+		WHERE num=#{num} AND userId=#{userId}
+	</update>
+    
+	<!-- 삭제 -->
+	<delete id="deleteLecture" parameterType="Long">
+		DELETE FROM lecture WHERE num=#{num}
+	</delete>
+	
+	<!-- 파일 -->
+	<insert id="insertLectureFile" parameterType="com.sp.app.domain.Lecture">
+		INSERT INTO lectureFile(fileNum, num, saveFilename, originalFilename)
+		VALUES (lectureFile_seq.NEXTVAL, #{num}, #{saveFilename}, #{originalFilename})
+	</insert>
+	
+	<select id="listLectureFile" parameterType="Long" resultType="com.sp.app.domain.Lecture">
+		SELECT fileNum, num, saveFilename, originalFilename
+		FROM lectureFile
+		WHERE num=#{num}    
+	</select>
+	
+	<select id="findByFileId" parameterType="Long" resultType="com.sp.app.domain.Lecture">
+		SELECT fileNum, num, saveFilename, originalFilename
+		FROM lectureFile
+	    WHERE fileNum=#{fileNum}
+	</select>
+	
+	<delete id="deleteLectureFile" parameterType="map">
+		DELETE FROM lectureFile WHERE ${field} = #{num}
+	</delete>
+</mapper>
