@@ -6,10 +6,6 @@
 .body-container {
 	max-width: 800px;
 }
-
-.board-article img { max-width: 650px; }
-
-
 </style>
 <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/boot-board.css" type="text/css">
 
@@ -50,7 +46,7 @@ function searchList() {
 				<tbody>
 					<c:forEach var="dto" items="${list}" varStatus="status">
 						<tr>
-							<td>${dataCount - (page-1) *size-status.index}</td>
+							<td>${dataCount-(page-1)*size-status.index}</td>
 							<td class="left">
 								<a href="${articleUrl}&num=${dto.num}" class="text-reset">${dto.subject}</a>
 							</td>
@@ -58,8 +54,8 @@ function searchList() {
 							<td>${dto.reg_date}</td>
 							<td>${dto.hitCount}</td>
 							<td>
-								<c:if test="${not empty dto.saveFilename}"> 
-									<a href="${pageContext.request.contextPath}/bbs/download?num=${dto.num}"><i class="bi bi-file-arrow-down"></i> </a>
+								<c:if test="${not empty dto.saveFilename}">
+									<a href="${pageContext.request.contextPath}/bbs/download?num=${dto.num}" class="text-reset"><i class="bi bi-file-arrow-down"></i></a>
 								</c:if>
 							</td>
 						</tr>
@@ -68,7 +64,7 @@ function searchList() {
 			</table>
 			
 			<div class="page-navigation">
-				${paging}
+				${dataCount==0? "등록된 게시글이 없습니다." : paging }
 			</div>
 
 			<div class="row board-list-footer">

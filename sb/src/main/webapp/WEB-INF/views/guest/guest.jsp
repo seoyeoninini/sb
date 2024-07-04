@@ -49,9 +49,8 @@ textarea::placeholder{
 				
 				<div class="list-content" data-pageNo="0" data-totalPage="0"></div>
 				
-				<div class="list-footer mt-2 text-end">
-					<span class="more-btn btn btn-light">&nbsp;더보기&nbsp;<i class="bi bi-chevron-down"></i>&nbsp;</span>
-				</div>
+				<!-- 무한 스크롤 관찰용 -->
+				<div class="sentinal" data-loading="false"></div>
 			</div>
 
 		</div>
@@ -64,6 +63,8 @@ function login() {
 }
 
 function ajaxFun(url, method, formData, dataType, fn, file = false) {
+	const sentinalNode = document.querySelector(".sentinal"); 
+		
 	const settings = {
 			type: method, 
 			data: formData,
@@ -73,6 +74,7 @@ function ajaxFun(url, method, formData, dataType, fn, file = false) {
 			},
 			beforeSend: function(jqXHR) {
 				jqXHR.setRequestHeader('AJAX', true);
+				sentinalNode.setAttribute("data-loading", "true");
 			},
 			complete: function () {
 			},
@@ -97,18 +99,17 @@ function ajaxFun(url, method, formData, dataType, fn, file = false) {
 	$.ajax(url, settings);
 }
 
-// 더보기
-$(function() {
-	listPage(1);
-});
+const listNode = document.querySelector(".list-content");
+const sentinalNode = document.querySelector(".sentinal");
 
-function listPage(page) {
-	let url = "${pageContext.request.contextPath}/guest/list";
-	let formData = "pageNo=" + page;
+function loadContent(page) {
+	let url = '${pageContext.request.contextPath}/guest/list';
+	let formData = 'pageNo=' + page;
+	
 	const fn = function(data) {
-		addNewContent(data)		
+		addNewContent(data);
 	};
-	ajaxFun(url, "get", formData, "json", fn);
+	ajaxFun(url, 'get', formData, 'json', fn);
 }
 
 function addNewContent(data) {
@@ -116,22 +117,20 @@ function addNewContent(data) {
 	let pageNo = data.pageNo;
 	let total_page = data.total_page;
 	
-	$(".list-content").attr("data-pageNo", pageNo);
-	$(".list-content").attr("data-totalPage", total_page);
+	listNode.setAttribute('data-pageNo', pageNo);
+	listNode.setAttribute('data-totalPage', total_page);
 	
-	$(".item-count").html("방명록 " + dataCount + "개");
+	const itemCount = document.querySelector(".item-count");
+	itemCount.innerHTML = '방명록 ' + dataCount + '개';
 	
-	$(".list-footer").hide();
+	sentinalNode.style.display = "none";
+	
 	if(parseInt(dataCount) === 0) {
-		$(".list-content").empty();
-		return false;
+		listNode.innerHTML = "";
+		return;
 	}
 	
-	if(parseInt(pageNo) < parseInt(total_page)) {
-		$(".list-footer").show();
-	}
-	
-	let htmlText = "";
+	let htmlText = '';
 	for(let item of data.list) {
 		let num = item.num;
 		let userName = item.userName;
@@ -139,32 +138,114 @@ function addNewContent(data) {
 		let reg_date = item.reg_date;
 		let deletePermit = item.deletePermit;
 		
-		htmlText = '<div class="item-content">';
-		
-		htmlText += '      <div class= "row p-2 mx-0 border bg-light">';
-		
-		htmlText += '		<div class = "col px-0"><i class="bi bi-emoji-smile"></i> ' + userName + '</div>';	
-		htmlText += '		<div class = "col px-0 text-end">' + reg_date;	
+		htmlText =  '<div class="item-content">';
+		htmlText += '    <div class="row p-2 mx-0 border bg-light">';
+		htmlText += '        <div class="col px-0"><i class="bi bi-person-circle text-muted"></i> ' + userName + '</div>';
+		htmlText += '        <div class="col px-0 text-end">' + reg_date;
 		if(deletePermit) {
-			htmlText += ' | <span class="item-delete" data-num="' + num +'">삭제</span>';
+			htmlText += '        |<span class="item-delete" data-num="' + num + '">삭제</span>';
 		} else {
-			htmlText += ' | <span class="item-notify" data-num= "' + num +'">신고</span>';
+			htmlText += '        |<span class="item-notify" data-num="' + num + '">신고</span>';
 		}
-		htmlText += '		</div>';		
-		
-		htmlText += '		</div>'
-		htmlText += '		<div class="p-2 text-break">' + content + '</div>';
+		htmlText += '        </div>';
+		htmlText += '    </div>';
+		htmlText += '    <div class="p-2 text-break">' + content + '</div>';
 		htmlText += '</div>';
+
+		// $(".list-content").append(htmlText);
+		listNode.insertAdjacentHTML("beforeend", htmlText);
+	}
+	
+	if(parseInt(pageNo) < parseInt(total_page)) {
+		sentinalNode.setAttribute("data-loading", "false");
+		sentinalNode.style.display = "block";
 		
-		$('.list-content').append(htmlText);
+		// 관찰할 대상 등록
+		io.observe(sentinalNode);
 	}
 }
 
-// 더보기 버튼
-$(function() {
-	$(".list-footer .more-btn").click(function() {
-		let pageNo = $(".list-content").attr("data-pageNo");
-		let total_page = $(".list-content").attr("data-totalPage");
+// 무한스크롤
+const ioCallback = (entries, io) => {
+	entries.forEach((entry) => {
+		if(entry.isIntersecting) { 
+			// 관찰대상이 화면에 보이면
+			let loading = sentinalNode.getAttribute("data-loading");
+			if(loading !== "false") {
+				return;
+			}
+			
+			io.unobserve(entry.target); // 관찰대상을 관찰하지 않음
+			
+			let pageNo = parseInt(listNode.getAttribute("data-pageNo"));
+			let total_page = parseInt(listNode.getAttribute("data-totalPage"));
+			
+			if(pageNo === 0 || pageNo < total_page) {
+				pageNo++;
+				loadContent(pageNo);
+			}
+			
+		}
+	});
+};
+
+const io = new IntersectionObserver(ioCallback);
+io.observe(sentinalNode); // 관찰할 대상 등록
+
+$(function(){
+	$('.btnSend').click(function(){
+		let content = $('#content').val().trim();
+		if(! content) {
+			$('#content').focus();
+			return false;
+		}
+		
+		let url = '${pageContext.request.contextPath}/guest/insert';
+		let formData = {content:content};
+		// let formData = 'content=' + encodeURIComponent(content);
+		// let formData = $('form[name=guestForm]').serialize();
+		
+		const fn = function(data) {
+			$('#content').val('');
+			$('.list-content').empty();
+
+			listNode.setAttribute("data-pageNo", "0");
+			sentinalNode.style.display = "block";
+			sentinalNode.setAttribute("data-loading", "false");
+			io.observe(sentinalNode);
+		};
+		
+		ajaxFun(url, 'post', formData, 'json', fn);
+	});
+});
+
+$(function(){
+	$('.list-content').on('click', '.item-delete', function(){
+		if( ! confirm('게시글을 삭제 하시겠습니까 ? ')) {
+			return false;
+		}
+		
+		let num = $(this).attr('data-num');
+		let url = '${pageContext.request.contextPath}/guest/delete';
+		// let formData = 'num=' + num;
+		let formData = {num: num};
+		
+		const fn = function(data) {
+			$('.list-content').empty();
+
+			listNode.setAttribute("data-pageNo", "0");
+			sentinalNode.style.display = "block";
+			sentinalNode.setAttribute("data-loading", "false");
+			io.observe(sentinalNode);
+		};
+		ajaxFun(url, 'post', formData, 'json', fn);
+	});
+});
+
+$(function(){
+	$('.list-footer .more-btn').click(function(){
+		let pageNo = $('.list-content').attr('data-pageNo');
+		let total_page = $('.list-content').attr('data-totalPage');
 		
 		if(parseInt(pageNo) < parseInt(total_page)) {
 			pageNo++;
@@ -172,53 +253,4 @@ $(function() {
 		}
 	});
 });
-
-// 등록하기
-$(function() {
-	$(".btnSend").click(function() {
-		let content = $("#content").val().trim();
-		if(! content) {
-			$("#content").focus();
-			return false;
-		}
-		
-		let url = "${pageContext.request.contextPath}/guest/insert";
-		let formData = {content: content}; // 객체로 전송시 jquery가 인코딩함
-		// let formData = "content=" encodeURIComponent(content); // 방법1_기존 방식
-		// let formData = $("form[name=guestForm]").serialize(); // 방법2
-		
-		const fn = function(data) {
-			$("#content").val("");
-			$(".list-content").empty();
-			listPage(1);
-		};
-		
-		ajaxFun(url, "post", formData, "json", fn);
-		
-	});
-});
-
-// 삭제하기
-$(function() {
-	$(".list-content").on("click", ".item-delete", function() {
-		if(! confirm("게시글 삭제 할래? ")) {
-			return false;
-		}
-		
-		let num = $(this).attr("data-num");
-		let url = "${pageContext.request.contextPath}/guest/delete";
-		let formData = {num: num};
-		
-		const fn = function(data) {
-			$(".list-content").empty();
-			listPage(1);
-		};
-		ajaxFun(url, "post", formData, "json", fn);
-		
-	});
-});
-
-
-
-
 </script>

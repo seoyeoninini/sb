@@ -91,7 +91,7 @@
                             <input type="text" name="userId" class="form-control" placeholder="아이디">
                         </div>
                         <div>
-                            <input type="password" name="userPwd" autocomplete="off" class="form-control" placeholder="패스워드">
+                            <input type="password" name="userPwd" class="form-control" autocomplete="off" placeholder="패스워드">
                         </div>
                         <div>
                             <div class="form-check">
@@ -104,7 +104,7 @@
                         </div>
                         <div>
                     		 <p class="form-control-plaintext text-center">
-                    		 	<a href="#" class="text-decoration-none me-2">패스워드를 잊으셨나요 ?</a>
+                    		 	<a href="${pageContext.request.contextPath}/member/pwdFind" class="text-decoration-none me-2">패스워드를 잊으셨나요 ?</a>
                     		 </p>
                     	</div>
                     </form>

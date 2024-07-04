@@ -6,7 +6,7 @@ public class Guest {
 	private String userName;
 	private String content;
 	private String reg_date;
-	private boolean deletePermit; // 게시글 삭제 권한 여부
+	private boolean deletePermit;
 	
 	public long getNum() {
 		return num;
@@ -44,6 +44,4 @@ public class Guest {
 	public void setDeletePermit(boolean deletePermit) {
 		this.deletePermit = deletePermit;
 	}
-	
-	
 }

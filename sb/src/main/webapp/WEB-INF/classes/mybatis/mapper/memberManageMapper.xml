@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sp.app.admin.mapper.MemberManageMapper">
+    <!-- 회원 리스트 -->
+	<sql id="where-list">
+		<choose>
+			<when test="schType=='userId'">
+				INSTR(m1.userId, #{kwd}) &gt;= 1
+			</when>
+			<otherwise>
+				INSTR(${schType}, #{kwd}) &gt;= 1
+			</otherwise>
+		</choose>
+	</sql>
+	
+	<select id="dataCount" parameterType="map" resultType="Integer">
+		SELECT COUNT(*)
+		FROM member m
+		JOIN member1 m1 ON m.memberIdx = m1.memberIdx
+		LEFT OUTER JOIN member2 m2 ON m1.userId = m2.userId
+		<where>
+			<if test="kwd!=null and kwd!='' ">
+				<include refid="where-list"/>
+			</if>
+			<if test="enabled!=''">
+				AND enabled = #{enabled}
+			</if>
+			AND m.membership &lt; 50
+		</where> 
+    </select>
+    
+	<select id="listMember" parameterType="map" resultType="com.sp.app.admin.domain.MemberManage">
+		SELECT m1.memberIdx, membership, m1.userId, userName, 
+			m1.register_date, m1.modify_date, last_login,
+			enabled, email, tel, 
+			TO_CHAR(birth, 'YYYY-MM-DD') birth
+		FROM member m
+		JOIN member1 m1 ON m.memberIdx = m1.memberIdx
+		LEFT OUTER JOIN member2 m2 ON m1.userId = m2.userId
+		<where>
+			<if test="kwd!=null and kwd!='' ">
+				<include refid="where-list"/>
+			</if>
+			<if test="enabled!=''">
+				AND enabled = #{enabled}
+			</if>
+			AND m.membership &lt; 50
+		</where> 
+		ORDER BY register_date DESC
+		OFFSET #{offset} ROWS FETCH FIRST #{size} ROWS ONLY
+	</select>
+
+	<select id="findById" parameterType="String" resultType="com.sp.app.admin.domain.MemberManage">
+		SELECT membership, m1.memberIdx, m1.userId, userName, userPwd, enabled,
+			register_date, modify_date, last_login,
+			TO_CHAR(birth, 'YYYY-MM-DD') birth, email, tel, 
+			zip, addr1, addr2
+		FROM member m
+		JOIN member1 m1 ON m.memberIdx = m1.memberIdx
+		LEFT OUTER JOIN member2 m2 ON m1.userId = m2.userId
+		WHERE m1.userId = #{userId}
+	</select>
+
+	<update id="updateFailureCountReset" parameterType="String">
+		UPDATE member1 SET failure_cnt = 0
+		WHERE userId = #{userId}
+	</update>
+
+    <update id="updateMemberEnabled" parameterType="map">
+		UPDATE member1 SET enabled=#{enabled} WHERE userId=#{userId}
+    </update>
+    
+	<insert id="insertMemberState" parameterType="com.sp.app.admin.domain.MemberManage">
+		INSERT INTO memberState(num, userId, stateCode, memo, registerId, reg_date)
+		VALUES (memberState_seq.NEXTVAL, #{userId}, #{stateCode}, #{memo}, #{registerId}, SYSDATE)
+	</insert>
+	
+	<select id="listMemberState" parameterType="String" resultType="com.sp.app.admin.domain.MemberManage">
+		SELECT num, userId, stateCode, memo, registerId, reg_date
+		FROM memberState
+		WHERE userId = #{userId}
+		ORDER BY num DESC
+	</select>
+
+	<select id="findByState" parameterType="String" resultType="com.sp.app.admin.domain.MemberManage">
+		SELECT num, userId, stateCode, memo, registerId, reg_date
+		FROM memberState
+		WHERE userId = #{userId}
+		ORDER BY num DESC
+		FETCH FIRST 1 ROWS ONLY
+	</select>
+
+	<!-- 챠트 쿼리 -->
+	<select id="listAgeSection" resultType="com.sp.app.admin.domain.AnalysisManage">
+		WITH  memberAge AS (
+		    SELECT m2.userId, TRUNC(MONTHS_BETWEEN(SYSDATE, birth)/12) age
+		    FROM member m
+			JOIN member1 m1 ON m.memberIdx = m1.memberIdx
+			JOIN member2 m2 ON m1.userId = m2.userId
+			WHERE m.membership &lt; 50
+		)
+<![CDATA[
+		SELECT '10대' section, COUNT(*) count FROM memberAge WHERE age>=10 AND age<20
+		UNION ALL
+		SELECT '20대' section, COUNT(*) count FROM memberAge WHERE age>=20 AND age<30
+		UNION ALL
+		SELECT '30대' section, COUNT(*) count FROM memberAge WHERE age>=30 AND age<40
+		UNION ALL
+		SELECT '40대' section, COUNT(*) count FROM memberAge WHERE age>=40 AND age<50
+		UNION ALL
+		SELECT '50대' section, COUNT(*) count FROM memberAge WHERE age>=50 AND age<60
+		UNION ALL
+		SELECT '60대' section, COUNT(*) count FROM memberAge WHERE age>=60 AND age<70
+		UNION ALL
+		SELECT '기타' section, COUNT(*) count FROM memberAge WHERE age<10 OR age>=70
+]]>
+	</select>
+</mapper>

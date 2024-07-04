@@ -87,7 +87,7 @@ $(function(){
 		</li>
 
 		<li class="menu--item">
-	        <a href="#" class="menu--link" title="회원 관리">
+	        <a href="<c:url value='/admin/memberManage/list'/>" class="menu--link" title="회원 관리">
 				<i class="menu--icon  fa-fw fa-solid fa-user-group"></i>
 				<span class="menu--label">회원 관리</span>
 			</a>
@@ -101,16 +101,16 @@ $(function(){
 
 			<ul class="sub_menu">
 				<li class="sub_menu--item">
-					<a href="#" class="sub_menu--link">자주하는 질문</a>
+					<a href="<c:url value='/admin/faqManage/main'/>" class="sub_menu--link">자주하는 질문</a>
 				</li>
 				<li class="sub_menu--item">
-					<a href="#" class="sub_menu--link">공지사항</a>
+					<a href="<c:url value='/admin/noticeManage/list'/>" class="sub_menu--link">공지사항</a>
 				</li>
 				<li class="sub_menu--item">
-					<a href="#" class="sub_menu--link">1:1문의</a>
+					<a href="<c:url value='/admin/inquiryManage/list'/>" class="sub_menu--link">1:1문의</a>
 				</li>
 				<li class="sub_menu--item">
-					<a href="#" class="sub_menu--link">이벤트</a>
+					<a href="<c:url value='/admin/eventManage/all/list'/>" class="sub_menu--link">이벤트</a>
 				</li>
 				<li class="sub_menu--item">
 					<a href="#" class="sub_menu--link">신고</a>

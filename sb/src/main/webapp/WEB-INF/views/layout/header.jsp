@@ -2,7 +2,34 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
 
-	<div class="container-fluid bg-light header-top">
+<style type="text/css">
+.fixed-top { position: fixed; top: 0; left: 0; right: 0; }
+.header-top.topbar-scrolled { top: -37px; }
+header .navbar.navbar-scrolled { top: 0; padding: 15px; }
+header .navbar { padding: 15px 0; top: 37px; z-index: 997; }
+main { margin-top: 115px; }
+</style>
+
+<script type="text/javascript">
+$(function(){
+	$(window).scroll(function() {
+		if ($(this).scrollTop() > 100) {
+			$('.navbar').addClass('navbar-scrolled');
+			$('.header-top').addClass('topbar-scrolled');
+		} else {
+			$('.navbar').removeClass('navbar-scrolled');
+			$('.header-top').removeClass('topbar-scrolled');
+		}
+	});
+
+	if ($(window).scrollTop() > 100) {
+		$('.navbar').addClass('navbar-scrolled');
+		$('.header-top').addClass('topbar-scrolled');
+	}
+});
+</script>
+
+	<div class="container-fluid bg-light header-top fixed-top">
 		<div class="container">
 			<div class="row">
 				<div class="col">
@@ -26,7 +53,10 @@
 									<a href="${pageContext.request.contextPath}/member/logout" title="로그아웃"><i class="bi bi-unlock"></i></a>
 								</div>					
 								<div class="p-2">
-									<a href="#" title="알림"><i class="bi bi-bell"></i></a>
+									<a href="${pageContext.request.contextPath}/note/receive/list" title="쪽지" class="position-relative">
+										<i class="bi bi-bell"></i>
+										<span class="new-noteCount position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary" style="font-size: 6px;"></span>
+									</a>
 								</div>
 								<c:if test="${sessionScope.member.membership>50}">
 									<div class="p-2">
@@ -42,7 +72,7 @@
 		</div>
 	</div>
 	
-	<nav class="navbar navbar-expand-lg navbar-light">
+	<nav class="navbar navbar-expand-lg navbar-light fixed-top">
 		<div class="container">
 			<a class="navbar-brand" href="${pageContext.request.contextPath}/"><i class="bi bi-app-indicator"></i></a>
 			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -65,10 +95,10 @@
 						<ul class="dropdown-menu" aria-labelledby="navbarDropdown">
 							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/guest/main">방명록</a></li>
 							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/bbs/list">게시판</a></li>
-							<li><a class="dropdown-item" href="#">답변형 게시판</a></li>
-							<li><a class="dropdown-item" href="#">포토갤러리</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/replyBoard/list">답변형 게시판</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/photograph/main">포토갤러리</a></li>
 							<li><hr class="dropdown-divider"></li>
-							<li><a class="dropdown-item" href="#">채팅</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/chatting/main">채팅</a></li>
 						</ul>
 					</li>
 	
@@ -92,11 +122,11 @@
 							고객센터
 						</a>
 						<ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-							<li><a class="dropdown-item" href="#">자주하는질문</a></li>
-							<li><a class="dropdown-item" href="#">공지사항</a></li>
-							<li><a class="dropdown-item" href="#">1:1문의</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/faq/main">자주하는질문</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/notice/list">공지사항</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/inquiry/list">1:1문의</a></li>
 							<li><hr class="dropdown-divider"></li>
-							<li><a class="dropdown-item" href="#">이벤트</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/event/progress/list">이벤트</a></li>
 						</ul>
 					</li>
 					
@@ -105,9 +135,9 @@
 							마이페이지
 						</a>
 						<ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-							<li><a class="dropdown-item" href="#">일정관리</a></li>
-							<li><a class="dropdown-item" href="#">사진첩</a></li>
-							<li><a class="dropdown-item" href="#">쪽지함</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/schedule/main">일정관리</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/album/list">사진첩</a></li>
+							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/note/receive/list">쪽지함</a></li>
 							<li><a class="dropdown-item" href="#">친구관리</a></li>
 							<li><a class="dropdown-item" href="${pageContext.request.contextPath}/mail/send">메일</a></li>
 							<li><hr class="dropdown-divider"></li>
@@ -120,3 +150,47 @@
 			
 		</div>
 	</nav>
+	
+	<script type="text/javascript">
+		$(function(){
+			var isLogin = "${not empty sessionScope.member ? 'true':'false'}";
+			var timer = null;
+			
+			if(isLogin === "true") {
+				newNoteCount();
+				// timer = setInterval("newNoteCount();", 1000 * 60 * 10); // 10분 후, 10분에 한번씩 실행
+			}
+			
+			function newNoteCount() {
+				var url = "${pageContext.request.contextPath}/note/newNoteCount";
+				var query = "tmp=" + new Date().getTime();
+				
+				$.ajax({
+					type:"get"
+					,url:url
+					,data:query
+					,dataType:"json"
+					,success:function(data) {
+						var newCount = parseInt(data.newCount);
+						if(newCount === 0) {
+							$(".new-noteCount").hide();
+							return false;
+						}
+						if(newCount >= 10) {
+							$(".new-noteCount").text("9+");
+						} else {
+							$(".new-noteCount").text(newCount);
+						}
+					}
+					,error:function(jqXHR) {
+						if(timer != null) {
+							clearInterval(timer);
+							timer = null;
+						}
+						console.log(jqXHR.responseText);
+					}
+				});
+			}
+		});
+	</script>
+		

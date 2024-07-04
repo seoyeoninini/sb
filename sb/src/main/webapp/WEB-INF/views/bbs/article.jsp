@@ -6,6 +6,9 @@
 .body-container {
 	max-width: 800px;
 }
+
+.board-article img { max-width: 650px; }
+
 </style>
 <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/boot-board.css" type="text/css">
 
@@ -226,6 +229,327 @@ $(function(){
 		
 	});
 });
+// 페이징
+$(function() {
+	listPage(1);
+});
+
+function listPage(page) {
+	let url = "${pageContext.request.contextPath}/bbs/listReply";
+	let query = "num=${dto.num}&pageNo=" + page;
+	let selector = "#listReply";
+	
+	const fn = function(data) {
+		$(selector).html(data);
+	};
+	
+	
+	ajaxFun(url, "get", query, "text", fn);
+}
+
+
+// 댓글 등록
+$(function() {
+	$(".btnSendReply").click(function() {
+		// 서버에 보낼 것 : num, content, answer
+		let num = "${dto.num}";
+		const $tb = $(this).closest("table");
+		let content = $tb.find("textarea").val().trim();
+		if(! content) {
+			$tb.find("textarea").focus();
+			return false;
+		}
+		
+		let url = "${pageContext.request.contextPath}/bbs/insertReply";
+		let query = {num:num, content:content, answer:0};
+		// 객체로 보내기 {키:값}
+		
+		const fn = function(data) {
+			$tb.find("textarea").val("");
+			let state = data.state;
+			if(state === "true") {
+				listPage(1);
+			} else {
+				alert("댓글 등록 실패..ㅠㅠ")
+			}
+		};
+		
+		ajaxFun(url, "post", query, "json", fn);
+	});
+});
+
+// 삭제, 신고 등 메뉴바 드롭다운 (동적으로 처리해야 할 것은 on으로 처리한다.)
+$(function() {
+	$(".reply").on("click", ".reply-dropdown", function() {
+		const $menu = $(this).next(".reply-menu");
+		if($menu.is(":visible")) {
+			$menu.fadeOut(100);
+		} else {
+			$(".reply-menu").hide();
+			$menu.fadeIn(100);
+			
+			let pos = $(this).offset();
+			$menu.offset({left:pos.left-70, top:pos.top+20});
+		}
+	});
+	
+	$(".reply").on("click", function() {
+		if($(event.target.parentNode).hasClass("reply-dropdown")) {
+			return false;
+		}
+	
+		$(".reply-menu").hide();
+	});
+});
+
+// 댓글 삭제 : replyNum, mode=reply (mode가 reply 이면 댓글 삭제
+$(function() {
+	$(".reply").on("click", ".deleteReply", function() {
+		if(! confirm('게시물을 삭제할래?')) {
+			return false;
+		}
+		
+		let replyNum = $(this).attr("data-replyNum");
+		let page = $(this).attr("data-pageNo");
+		
+		let url = "${pageContext.request.contextPath}/bbs/deleteReply";
+		let query = 'replyNum=' + replyNum + "&mode=reply";
+		const fn = function(data) {
+			// let state = data.state;
+			listPage(page);
+		};
+		ajaxFun(url, "post", query, "json", fn);
+	});
+});
+
+//댓글 좋아요/싫어요
+$(function(){
+	$('.reply').on('click', '.btnSendReplyLike', function(){
+		let replyNum = $(this).attr('data-replyNum');
+		let replyLike = $(this).attr('data-replyLike');
+		const $btn = $(this);
+		
+		let msg = '게시물이 마음에 들지 않으십니까 ?';
+		if(replyLike === '1') {
+			msg = '게시물에 공감하십니까 ?';
+		}
+		
+		if(! confirm(msg)) {
+			return false;
+		}
+		
+		let url = '${pageContext.request.contextPath}/bbs/insertReplyLike';
+		let query = 'replyNum=' + replyNum + '&replyLike=' + replyLike;
+		
+		const fn = function(data){
+			let state = data.state;
+			if(state === 'true') {
+				let likeCount = data.likeCount;
+				let disLikeCount = data.disLikeCount;
+				
+				$btn.parent('td').children().eq(0).find('span').html(likeCount);
+				$btn.parent('td').children().eq(1).find('span').html(disLikeCount);
+			} else if(state === 'liked') {
+				alert('게시물 공감 여부는 한번만 가능합니다. !!!');
+			} else {
+				alert('게시물 공감 여부 처리가 실패했습니다. !!!');
+			}
+		};
+		
+		ajaxFun(url, 'post', query, 'json', fn);
+	});
+});
+
+
+// 댓글별 답글 리스트
+function listReplyAnswer(answer) {
+	let url = '${pageContext.request.contextPath}/bbs/listReplyAnswer';
+	let query = 'answer=' + answer;
+	let selector = '#listReplyAnswer' + answer;
+	
+	const fn = function(data){
+		$(selector).html(data);
+	};
+	ajaxFun(url, 'get', query, 'text', fn);
+}
+
+// 댓글별 답글 개수
+function countReplyAnswer(answer) {
+	let url = '${pageContext.request.contextPath}/bbs/countReplyAnswer';
+	let query = 'answer=' + answer;
+	
+	const fn = function(data){
+		let count = data.count;
+		let selector = '#answerCount' + answer;
+		$(selector).html(count);
+	};
+	
+	ajaxFun(url, 'post', query, 'json', fn);
+}
+
+
+// 답글 버튼을 클릭한 경우
+$(function(){
+	$('.reply').on('click', '.btnReplyAnswerLayout', function(){
+		const $trReplyAnswer = $(this).closest('tr').next();
+		
+		let isVisible = $trReplyAnswer.is(':visible');
+		let replyNum = $(this).attr('data-replyNum');
+			
+		if(isVisible) {
+			$trReplyAnswer.hide();
+		} else {
+			$trReplyAnswer.show();
+            
+			// 답글 리스트
+			listReplyAnswer(replyNum);
+			
+			// 답글 개수
+			countReplyAnswer(replyNum);
+		}
+	});
+	
+});
+
+
+// 댓글별 답글 등록
+$(function(){
+	$('.reply').on('click', '.btnSendReplyAnswer', function(){
+		let num = '${dto.num}';
+		let replyNum = $(this).attr('data-replyNum');
+		const $td = $(this).closest('td');
+		
+		let content = $td.find('textarea').val().trim();
+		if(! content) {
+			$td.find('textarea').focus();
+			return false;
+		}
+		
+		let url = '${pageContext.request.contextPath}/bbs/insertReply';
+		// let formData = 'num=' + num + '&content=' + encodeURIComponent(content) + '&answer=' + replyNum;
+		let formData = {num:num, content:content, answer:replyNum}; // formData를 객체로 전송하면 인코딩하면 안됨
+		
+		const fn = function(data){
+			$td.find('textarea').val('');
+			
+			var state = data.state;
+			if(state === 'true') {
+				listReplyAnswer(replyNum);
+				countReplyAnswer(replyNum);
+			}
+		};
+		
+		ajaxFun(url, 'post', formData, 'json', fn);
+	});
+});
+
+
+// 댓글별 답글 삭제
+$(function(){
+	$('.reply').on('click', '.deleteReplyAnswer', function(){
+		if(! confirm('게시물을 삭제하시겠습니까 ? ')) {
+		    return false;
+		}
+		
+		let replyNum = $(this).attr('data-replyNum');
+		let answer = $(this).attr('data-answer');
+		
+		let url = '${pageContext.request.contextPath}/bbs/deleteReply';
+		let query = 'replyNum=' + replyNum + '&mode=answer';
+		
+		const fn = function(data){
+			listReplyAnswer(answer);
+			countReplyAnswer(answer);
+		};
+		
+		ajaxFun(url, 'post', query, 'json', fn);
+	});
+});
+
+
+// 댓글 숨김 기능
+$(function(){
+	$('.reply').on('click', '.hideReply', function(){
+		let $menu = $(this);
+		
+		let replyNum = $(this).attr('data-replyNum');
+		let showReply = $(this).attr('data-showReply');
+		let msg = '댓글을 숨김 하시겠습니까 ? ';
+		if(showReply === '0') {
+			msg = '댓글 숨김을 해제 하시겠습니까 ? ';
+		}
+		if(! confirm(msg)) {
+			return false;
+		}
+		
+		showReply = showReply === '1' ? '0' : '1';
+		
+		let url = '${pageContext.request.contextPath}/bbs/replyShowHide';
+		let query = 'replyNum=' + replyNum + '&showReply=' + showReply;
+		
+		const fn = function(data){
+			if(data.state === 'true') {
+				let $item = $($menu).closest('tr').next('tr').find('td');
+				if(showReply === "1") {
+					$item.removeClass('text-primary').removeClass('text-opacity-50');
+					$menu.attr('data-showReply', '1');
+					$menu.html('숨김');
+				} else {
+					$item.addClass('text-primary').addClass('text-opacity-50');
+					$menu.attr('data-showReply', '0');
+					$menu.html('표시');
+				}
+			}
+		};
+		
+		ajaxFun(url, 'post', query, 'json', fn);
+	});
+});
+
+// 답글 숨김 기능
+$(function(){
+	$('.reply').on('click', '.hideReplyAnswer', function(){
+		let $menu = $(this);
+		
+		let replyNum = $(this).attr('data-replyNum');
+		let showReply = $(this).attr('data-showReply');
+		
+		let msg = '댓글을 숨김 하시겠습니까 ? ';
+		if(showReply === '0') {
+			msg = '댓글 숨김을 해제 하시겠습니까 ? ';
+		}
+		if(! confirm(msg)) {
+			return false;
+		}
+		
+		showReply = showReply === '1' ? '0' : '1';
+		
+		let url = '${pageContext.request.contextPath}/bbs/replyShowHide';
+		let query = 'replyNum=' + replyNum + '&showReply='+showReply;
+		
+		const fn = function(data){
+			if(data.state === 'true') {
+				let $item = $($menu).closest('.row').next('div');
+				if(showReply === '1') {
+					$item.removeClass('text-primary').removeClass('text-opacity-50');
+					$menu.attr('data-showReply', '1');
+					$menu.html('숨김');
+				} else {
+					$item.addClass('text-primary').addClass('text-opacity-50');
+					$menu.attr('data-showReply', '0');
+					$menu.html('표시');
+				}
+			}
+		};
+		
+		ajaxFun(url, 'post', query, 'json', fn);
+	});
+});
+
+
+
+
+
 
 </script>
 

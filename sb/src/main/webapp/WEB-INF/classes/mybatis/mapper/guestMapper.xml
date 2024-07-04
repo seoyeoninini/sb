@@ -2,35 +2,28 @@
 
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.sp.app.mapper.GuestMapper">
-
-	<!-- insertGuest -->
 	<insert id="insertGuest" parameterType="com.sp.app.domain.Guest">
 		INSERT INTO guest(num, userId, content, reg_date)
-		VALUES (guest_seq.NEXTVAL, #{userId}, #{content}, SYSDATE )
+		VALUES (guest_seq.NEXTVAL, #{userId}, #{content}, SYSDATE)
 	</insert>
 	
-	<!-- deleteGuest -->
-	<delete id="deleteGuest" parameterType="map">
-		DELETE FROM guest 
-		WHERE num = #{num}
-		<if test="membership &lt; 51">
-			AND userId = #{userId}
-		</if>
-	</delete>
-	
-	<!-- dataCount -->
 	<select id="dataCount" resultType="Integer">
-		SELECT NVL(COUNT(*), 0)
-		FROM guest
+		SELECT NVL(COUNT(*), 0) FROM guest
 	</select>
 	
-	<!-- listGuest -->
 	<select id="listGuest" parameterType="map" resultType="com.sp.app.domain.Guest">
-		SELECT g.num, g.userId, m.userName, g.content, g.reg_date
+		SELECT num, g.userId, userName, g.content, g.reg_date
 		FROM guest g
-		JOIN member1 m ON g.userId = m.userId
+		JOIN member1 m ON g.userId=m.userId
 		ORDER BY num DESC
 		OFFSET #{offset} ROWS FETCH FIRST #{size} ROWS ONLY
 	</select>
-
+	
+	<delete id="deleteGuest" parameterType="map">
+		DELETE FROM guest
+		WHERE num=#{num}
+		<if test="membership &lt; 51">
+			AND userId=#{userId}
+		</if>
+	</delete>   
 </mapper>

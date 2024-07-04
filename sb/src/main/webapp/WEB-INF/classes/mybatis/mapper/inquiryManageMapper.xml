@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.sp.app.admin.mapper.InquiryManageMapper">
+	<sql id="where-list">
+		<if test="schType=='all' ">
+			( INSTR(subject, #{kwd}) &gt; 0 
+				OR INSTR(content, #{kwd}) &gt; 0 )
+		</if>
+		<if test="schType=='subject'">
+			INSTR(subject, #{kwd}) &gt; 0
+		</if>
+		<if test="schType=='content'">
+			DBMS_LOB.INSTR(content, #{kwd}) &gt; 0 
+		</if>
+		<if test="schType=='userName'">
+			userName=#{kwd}
+		</if>
+		<if test="schType=='userId'">
+			INSTR(i.userId, #{kwd}) = 1
+		</if>
+		<if test="schType=='reg_data'">
+			( TO_CHAR(i.reg_date, 'YYYY-MM-DD') = #{kwd}
+				OR TO_CHAR(i.reg_date, 'YYYYMMDD') = #{kwd} )
+		</if>
+	</sql>
+
+	<!-- 글개수 -->
+	<select id="dataCount" parameterType="map" resultType="Integer">
+		SELECT NVL(COUNT(*), 0)
+		FROM inquiry i
+		JOIN member1 m ON i.userId=m.userId
+		<where>
+			<if test="kwd!=null and kwd!='' ">
+				AND <include refid="where-list"/>
+			</if>
+		</where>   
+	</select>
+
+	<!-- 글리스트 -->
+    <select id="listInquiry" parameterType="map" resultType="com.sp.app.admin.domain.InquiryManage">
+		SELECT num, i.userId, userName, category, subject,
+			   TO_CHAR(reg_date, 'YYYY-MM-DD') reg_date, answer_date
+		FROM inquiry i
+		JOIN member1 m ON i.userId=m.userId
+		<where>
+			<if test="kwd!=null and kwd!='' ">
+				AND <include refid="where-list"/>
+			</if>
+		</where>   
+		ORDER BY num DESC
+		OFFSET #{offset} ROWS FETCH FIRST #{size} ROWS ONLY
+	</select>
+    
+	<!-- 글보기 -->
+	<select id="findById" resultType="com.sp.app.admin.domain.InquiryManage" parameterType="Long">
+		SELECT num, i.userId, m.userName, category, subject, content, 
+				reg_date, answerId, a.userName answerName, answer, answer_date
+		FROM inquiry i
+		JOIN member1 m ON i.userId=m.userId
+		LEFT OUTER JOIN member1 a ON i.answerId = a.userId
+		WHERE num = #{num}
+	</select>
+
+	<!-- 답변 달기 -->
+	<update id="updateAnswer" parameterType="com.sp.app.admin.domain.InquiryManage">
+		UPDATE inquiry SET answerId = #{answerId}, answer = #{answer}, answer_date = SYSDATE
+		WHERE num = #{num}
+	</update>
+      
+	<update id="deleteAnswer" parameterType="Long">
+		UPDATE inquiry SET answerId = NULL, answer = NULL, answer_date = NULL
+		WHERE num = #{num}
+	</update>
+	      
+	<!-- 삭제 -->
+	<delete id="deleteInquiry" parameterType="Long">
+		DELETE FROM inquiry WHERE num = #{num}
+	</delete>
+</mapper>
