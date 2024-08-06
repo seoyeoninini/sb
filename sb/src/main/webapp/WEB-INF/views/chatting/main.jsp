@@ -93,5 +93,219 @@
 
 <script type="text/javascript">
 
+$(function() {
+	var socket = null;
+	var host = "${wsURL}"; // 서버에서 던진 주소
+	
+	// 브라우저 안에 웹소켓 객체 존재 여부 확인 - 서버 연결됨
+ 	if("WebSocket" in window) {
+ 		socket = new WebSocket(host);
+ 	} else if("MozWebSocket" in window) {
+ 		socket = new MozWebSocket(host);
+ 	} else {
+ 		
+ 		return false;
+ 	}
+ 	
+ 	// 서버 접속이 성공한 경우
+ 	socket.onopen =function(evt) { onOpen(evt) };
+ 	// 서버와 연결이 끊어진 경우
+ 	socket.onclose =function(evt) { onClose(evt) };
+ 	// 메시지를 받은 경우
+ 	socket.onmessage =function(evt) { onMessage(evt) };
+ 	// 에러가 발생한 경우
+ 	socket.onerror =function(evt) { onError(evt) };
+ 	
+ 	
+	function onOpen(evt) {
+		// 서버 접속이 성공한 경우 호출되는 콜백 메소드
+		let uid = "${sessionScope.member.memberIdx}";
+		let nickName = "${sessionScope.member.userName}";
+		if(! uid) {
+			location.href = "${pageContext.request.contextPath}/member/login";
+			return;
+		}
+		
+		writeToScreen("<div class='msg-right'>채팅방에 입장했습니다.</div>");
+		
+		// 서버에 접속 성공하면 아이디와 이름을 JSON으로 전송하기
+		let obj = {};
+		obj.type = "connect";
+		obj.uid = uid;
+		obj.nickName = nickName;
+		
+		// 자바스크립트 객체를 JSON 형식으로 문자열로 변환
+		let jsonStr = JSON.stringify(obj);
+		socket.send(jsonStr);
+		
+		// 채팅 입력창에서 엔터를 누르면 메시지를 전송하기 위해 keydown 이벤트 등록
+		$('#chatMsg').on('keydown', function(evt) {
+			// 엔터를 누른 경우 
+			let key = evt.key || evt.keyCode;
+			if(key === 'Enter' || key === 13) {
+				sendMessage();
+			}
+		});
+	}
+ 	
+	function onClose(evt) {
+		// 서버와 연결이 끊어진 경우 호출되는 콜백 메소드	
+		$('#chatMsg').off('keydown');
+		writeToScreen("<div class='chat-info'>서버와 연결 해제</div>");
+	}
+ 	
+	function  onMessage(evt) {
+		// 메시지를 받은 경우 호출되는 콜백 메소드
+		// console.log(evt.data);
+		
+		// 전송 받은 JSON 형식의 문자열을 자바스트립트 객체로 변환
+		let data = JSON.parse(evt.data);
+		let cmd = data.type;
+		
+		if(cmd === "userList") {
+			let users = data.users;
+			for(let i = 0; i < users.length; i++) {
+				let uid = users[i][0];
+				let nickName = users[i][1];
+				
+				let out = '<span id= "user-' + uid + '" data-uid="' 
+					+ uid + '"><i class="bi bi-person-square"></i> '
+					+ nickName + '</span>';
+					$('.chat-connection-list').append(out);
+			}
+		} else if(cmd === "userConnect") {
+			let uid = data.uid;
+			let nickName = data.nickName;
+			
+			let out = '<div class ="chat-info">' + nickName + '님이 입장했습니다.</div>';
+			writeToScreen(out);
+			
+			 out = '<span id= "user-' + uid + '" data-uid="' 
+				+ uid + '"><i class="bi bi-person-square"></i> '
+				+ nickName + '</span>';
+				$('.chat-connection-list').append(out);
+			
+		} else if(cmd === "userDisconnect") {
+			
+			let uid = data.uid;
+			let nickName = data.nickName;
+			
+			let out = '<div class ="chat-info">' + nickName + '님이 퇴장했습니다.</div>';
+			writeToScreen(out);
+			
+			$('#user-' + uid).remove();
+			
+		} else if( cmd === "message") {
+			let uid = data.uid;
+			let nickName = data.nickName;
+			let msg = data.chatMsg;
+			
+			let out = '<div class="user-left">' + nickName + '</div>';
+			out += '<div class="msg-left">' + msg + '</div>';
+			writeToScreen(out);
+			
+			
+		} else if(cmd === "whisper") {
+			let uid = data.uid;
+			let nickName = data.nickName;
+			let msg = data.chatMsg;
+			
+			let out = '<div class="user-left">' + nickName + '(귓속말)</div>';
+			out += '<div class="msg-left">' + msg + '</div>';
+			writeToScreen(out);
+			
+		}
+	}
+ 	
+	function onError(evt) {
+		// 에러가 발생한 경우 호출되는 콜백 메소드
+	}
+ 	
+	// 채팅 메시지를 전송
+	function sendMessage() {
+		let msg = $('#chatMsg').val().trim();
+		if(! msg) {
+			$('#chatMsg').focus();
+			return;
+		}
+		
+	    let obj = {};
+	    obj.type = 'message';
+	    obj.chatMsg = msg;
+		
+		let jsonStr = JSON.stringify(obj);
+		socket.send(jsonStr);
+		
+		$('#chatMsg').val('');
+		
+		writeToScreen("<div class='msg-right'>" + msg + "</div>");
+	}
+	
+	// 귓속말 대화상자
+	$('.chat-connection-list').on('click', 'span', function() {
+		let uid = $(this).attr('data-uid');
+		let nickName = $(this).text().trim();
+		
+		$('#chatOneMsg').attr('data-uid', uid);
+		$('#chatOneMsg').attr('data-nickName', nickName);
+		
+		$('#myDialogModalLabel').html('귓속말-' + nickName);
+		$('#myDialogModal').modal('show');
+	});
+	
+	const modalEl = document.getElementById('myDialogModal');
+	modalEl.addEventListener('show.bs.modal', function() {
+		// 대화상자가 보일때		
+		$('#chatOneMsg').on('keydown', function(evt) {
+			let key = evt.key || evt.keyCode;
+			
+			if(key === 'Enter' || key === 13) {
+				sendOneMessage();
+			}
+		});
+	});
+
+	modalEl.addEventListener('hidden.bs.modal', function() {
+		// 대화상자가 사라질 때		
+		$('#chatOneMsg').off('keydown');
+		$('#chatOneMsg').val('');
+	});
+	
+	function sendOneMessage() {
+		let msg = $('#chatOneMsg').val().trim();
+		if(! msg) {
+			$('#chatOneMsg').focus();
+			return;
+		}
+		
+		let uid = $('#chatOneMsg').attr('data-uid');
+		let nickName = $('#chatOneMsg').attr('data-nickName');
+		
+		let obj = {};
+		obj.type = 'whisper';
+		obj.chatMsg = msg;
+		obj.receiver = uid;
+		
+		let jsonStr = JSON.stringify(obj);
+		socket.send(jsonStr);
+		
+		writeToScreen("<div class='msg-right'>" + msg + '(' + nickName + ')</div>');
+		
+		$('#chatOneMsg').val();
+		$('#myDialogModal').modal('hide');
+	}
+	
+});
+
+function writeToScreen(message) {
+	const $msgEL = $(".chat-msg-container");
+	$msgEL.append(message);
+	
+	// 스크롤을 최상단에 있도록 설정
+	$msgEL.scrollTop($msgEL.prop("scrollHeight"));
+	
+}
+
+
 
 </script>
